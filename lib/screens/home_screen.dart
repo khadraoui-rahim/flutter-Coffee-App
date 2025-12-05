@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/coffee_item.dart';
+import 'coffee_detail_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -18,6 +19,32 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFF111111),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 60, vertical: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildNavItem(Icons.home, true),
+                _buildNavItem(Icons.favorite_border, false),
+                _buildNavItem(Icons.shopping_bag_outlined, false),
+                _buildNavItem(Icons.notifications_outlined, false),
+              ],
+            ),
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           child: Stack(
@@ -37,10 +64,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   // White background (rest of the page)
-                  Container(
-                    height: 1000,
-                    color: const Color(0xFFF9F9F9),
-                  ),
+                  Container(height: 1000, color: const Color(0xFFF9F9F9)),
                 ],
               ),
               // Content layer
@@ -56,10 +80,7 @@ class HomeScreen extends StatelessWidget {
                     // Location text
                     const Text(
                       'Location',
-                      style: TextStyle(
-                        color: Color(0xFFA2A2A2),
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Color(0xFFA2A2A2), fontSize: 12),
                     ),
                     const SizedBox(height: 4),
                     // Location with chevron
@@ -92,9 +113,7 @@ class HomeScreen extends StatelessWidget {
                               color: const Color(0xFF2A2A2A),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: const Row(
                               children: [
                                 Icon(
@@ -175,12 +194,18 @@ class HomeScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: _buildCoffeeCard(coffeeItems[leftIndex]),
+                              child: _buildCoffeeCard(
+                                context,
+                                coffeeItems[leftIndex],
+                              ),
                             ),
                             if (rightIndex < coffeeItems.length) ...[
                               const SizedBox(width: 16),
                               Expanded(
-                                child: _buildCoffeeCard(coffeeItems[rightIndex]),
+                                child: _buildCoffeeCard(
+                                  context,
+                                  coffeeItems[rightIndex],
+                                ),
                               ),
                             ] else
                               const Expanded(child: SizedBox()),
@@ -217,7 +242,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCoffeeCard(CoffeeItem item) {
+  Widget _buildCoffeeCard(BuildContext context, CoffeeItem item) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -275,7 +300,11 @@ class HomeScreen extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.star, color: Color(0xFFFBBE21), size: 12),
+                      const Icon(
+                        Icons.star,
+                        color: Color(0xFFFBBE21),
+                        size: 12,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         item.rating.toStringAsFixed(1),
@@ -327,17 +356,28 @@ class HomeScreen extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFC67C4E),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 16,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                CoffeeDetailScreen(coffee: item),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFC67C4E),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -347,6 +387,29 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, bool isSelected) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: isSelected ? const Color(0xFFC67C4E) : const Color(0xFF8D8D8D),
+          size: 28,
+        ),
+        if (isSelected)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFFC67C4E),
+              shape: BoxShape.circle,
+            ),
+          ),
+      ],
     );
   }
 }
