@@ -10,11 +10,10 @@ class OnboardingScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // Image taking 70% of height and 100% width
-            Expanded(
-              flex: 70,
+            // Image taking full height and width
+            Positioned.fill(
               child: Container(
                 width: double.infinity,
                 decoration: const BoxDecoration(
@@ -25,13 +24,26 @@ class OnboardingScreen extends StatelessWidget {
                 ),
               ),
             ),
-            // Lower section with text and button
-            Expanded(
-              flex: 30,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 30.0),
+            // Lower section with text and button - fixed from bottom
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(30.0, 40.0, 30.0, 40.0),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withOpacity(0.0),
+                      Colors.black.withOpacity(0.8),
+                      Colors.black,
+                    ],
+                  ),
+                ),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     // Header with 3 lines
                     Text(

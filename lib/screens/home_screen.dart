@@ -1,10 +1,104 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/coffee_item.dart';
+import '../services/api_service.dart';
+import '../widgets/filter_dialog.dart';
 import 'coffee_detail_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final ApiService _apiService = ApiService();
+  List<CoffeeItem> _coffeeItems = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  FilterOptions _filterOptions = FilterOptions();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCoffees();
+  }
+
+  Future<void> _loadCoffees() async {
+    print('Starting to load coffees...');
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      print('Calling API service...');
+      final coffees = await _apiService.getAllCoffees(
+        search: _filterOptions.searchTerm,
+        typeFilter: _filterOptions.coffeeType,
+        minPrice: _filterOptions.minPrice,
+        maxPrice: _filterOptions.maxPrice,
+        sort: _filterOptions.sortBy,
+        order: _filterOptions.sortOrder,
+      );
+      print('Received ${coffees.length} coffees from API');
+      setState(() {
+        _coffeeItems = coffees;
+        _isLoading = false;
+      });
+      print('State updated successfully');
+    } catch (e, stackTrace) {
+      print('Error loading coffees: $e');
+      print('Stack trace: $stackTrace');
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _showFilterDialog() async {
+    final result = await showDialog<FilterOptions>(
+      context: context,
+      builder: (context) => FilterDialog(initialFilters: _filterOptions),
+    );
+
+    if (result != null) {
+      setState(() {
+        _filterOptions = result;
+      });
+      _loadCoffees();
+    }
+  }
+
+  String _buildFilterSummary() {
+    final parts = <String>[];
+
+    if (_filterOptions.searchTerm != null) {
+      parts.add('Search: "${_filterOptions.searchTerm}"');
+    }
+    if (_filterOptions.coffeeType != null) {
+      parts.add('Type: ${_filterOptions.coffeeType}');
+    }
+    if (_filterOptions.minPrice != null || _filterOptions.maxPrice != null) {
+      if (_filterOptions.minPrice != null && _filterOptions.maxPrice != null) {
+        parts.add(
+          'Price: \$${_filterOptions.minPrice} - \$${_filterOptions.maxPrice}',
+        );
+      } else if (_filterOptions.minPrice != null) {
+        parts.add('Min: \$${_filterOptions.minPrice}');
+      } else {
+        parts.add('Max: \$${_filterOptions.maxPrice}');
+      }
+    }
+    if (_filterOptions.sortBy != null) {
+      final order = _filterOptions.sortOrder == 'asc' ? '↑' : '↓';
+      parts.add('Sort: ${_filterOptions.sortBy} $order');
+    }
+
+    return parts.join(' • ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +110,42 @@ class HomeScreen extends StatelessWidget {
         statusBarBrightness: Brightness.dark,
       ),
     );
+
+    // Calculate content height dynamically
+    // Fixed elements heights:
+    // - Location text: 12 + 4 spacing
+    // - Location with chevron: 20 + 16 spacing
+    // - Search bar: 52 + 12/24 spacing
+    // - Filter indicator (if active): 32 + 12 spacing
+    // - Promo: 160 + 24 spacing
+    // - Coffee types: 38 + 24 spacing
+    // - Each coffee card row: ~250 (132 image + 118 details) + 16 spacing
+    // - Bottom padding: 8
+
+    final int coffeeRows = (_coffeeItems.length / 2).ceil();
+    final double coffeeCardsHeight =
+        coffeeRows * 266.0; // 250 card + 16 spacing
+    final double filterIndicatorHeight = _filterOptions.hasActiveFilters
+        ? 44.0
+        : 0.0;
+
+    final double contentHeight =
+        16 + // Location text
+        20 + // Location with chevron
+        16 + // spacing
+        52 + // Search bar
+        filterIndicatorHeight + // Filter indicator (conditional)
+        24 + // spacing
+        160 + // Promo
+        24 + // spacing
+        38 + // Coffee types
+        24 + // spacing
+        coffeeCardsHeight + // Coffee cards
+        8 + // bottom padding
+        100; // Extra buffer
+
+    final double whiteBackgroundHeight =
+        contentHeight - 280 + 200; // Subtract dark section, add extra
 
     return Scaffold(
       backgroundColor: const Color(0xFF111111),
@@ -63,8 +193,11 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // White background (rest of the page)
-                  Container(height: 1000, color: const Color(0xFFF9F9F9)),
+                  // White background (calculated to cover all content)
+                  Container(
+                    height: whiteBackgroundHeight,
+                    color: const Color(0xFFF9F9F9),
+                  ),
                 ],
               ),
               // Content layer
@@ -134,22 +267,96 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        // Settings button (square box)
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFC67C4E),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.tune,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                        // Filter button (square box) with badge
+                        Stack(
+                          children: [
+                            GestureDetector(
+                              onTap: _showFilterDialog,
+                              child: Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFC67C4E),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.tune,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                            // Active filter badge
+                            if (_filterOptions.hasActiveFilters)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFBBE21),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
+                    // Active filters indicator
+                    if (_filterOptions.hasActiveFilters) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2A2A),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.filter_alt,
+                              color: Color(0xFFFBBE21),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _buildFilterSummary(),
+                                style: const TextStyle(
+                                  color: Color(0xFFD8D8D8),
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _filterOptions.clear();
+                                });
+                                _loadCoffees();
+                              },
+                              child: const Icon(
+                                Icons.close,
+                                color: Color(0xFFA2A2A2),
+                                size: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 24),
                     // Promo image box
                     ClipRRect(
@@ -185,34 +392,101 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     // Coffee items grid - 2 column layout
-                    ...List.generate((coffeeItems.length / 2).ceil(), (index) {
-                      final leftIndex = index * 2;
-                      final rightIndex = leftIndex + 1;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: _buildCoffeeCard(
-                                context,
-                                coffeeItems[leftIndex],
+                    if (_isLoading)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(32.0),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFC67C4E),
+                          ),
+                        ),
+                      )
+                    else if (_errorMessage != null)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Column(
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                                size: 48,
                               ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Failed to load coffees',
+                                style: TextStyle(
+                                  color: Colors.grey[700],
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _errorMessage!,
+                                style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadCoffees,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFC67C4E),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else if (_coffeeItems.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(32.0),
+                          child: Text(
+                            'No coffees available',
+                            style: TextStyle(
+                              color: Colors.grey[600],
+                              fontSize: 16,
                             ),
-                            if (rightIndex < coffeeItems.length) ...[
-                              const SizedBox(width: 16),
+                          ),
+                        ),
+                      )
+                    else
+                      ...List.generate((_coffeeItems.length / 2).ceil(), (
+                        index,
+                      ) {
+                        final leftIndex = index * 2;
+                        final rightIndex = leftIndex + 1;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
                               Expanded(
                                 child: _buildCoffeeCard(
                                   context,
-                                  coffeeItems[rightIndex],
+                                  _coffeeItems[leftIndex],
                                 ),
                               ),
-                            ] else
-                              const Expanded(child: SizedBox()),
-                          ],
-                        ),
-                      );
-                    }),
+                              if (rightIndex < _coffeeItems.length) ...[
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _buildCoffeeCard(
+                                    context,
+                                    _coffeeItems[rightIndex],
+                                  ),
+                                ),
+                              ] else
+                                const Expanded(child: SizedBox()),
+                            ],
+                          ),
+                        );
+                      }),
                     const SizedBox(height: 8),
                   ],
                 ),
