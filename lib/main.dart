@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'screens/onboarding_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 

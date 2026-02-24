@@ -10,7 +10,7 @@ class ApiConfig {
 
   // Default is set for OnePlus physical device
   // Use your computer's IP address: 192.168.1.102
-  static const String baseUrl = 'http://192.168.1.65:8080';
+  static const String baseUrl = 'http://localhost:8080';
 
   // Timeout duration for API requests
   static const Duration timeout = Duration(seconds: 30);
